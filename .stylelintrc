@@ -1,0 +1,17 @@
+{
+  "plugins": [
+    "stylelint-declaration-block-no-ignored-properties",
+    "stylelint-order"
+  ],
+  "rules": {
+    "plugin/declaration-block-no-ignored-properties": true,
+    "order/order": [
+			"custom-properties",
+			"declarations"
+		],
+		"order/properties-order": [
+			"width",
+			"height"
+		]
+  }
+}
