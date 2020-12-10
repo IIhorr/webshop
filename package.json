@@ -68,18 +68,10 @@
     "watch": "cross-env NODE_ENV=development webpack --mode development --watch",
     "start": "cross-env NODE_ENV=development webpack serve --mode development --open"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/IIhorr/Sellmor.git"
-  },
   "browserslist": "> 0.25%, not dead",
   "keywords": [
     "react+redux"
   ],
   "author": "Ihor <igor.tsimbalyuk5@gmail.com>",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/IIhorr/Sellmor/issues"
-  },
-  "homepage": "https://github.com/IIhorr/Sellmor#readme"
+  "license": "ISC"
 }
