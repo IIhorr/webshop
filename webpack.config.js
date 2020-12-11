@@ -1,36 +1,80 @@
-const ImageminPlugin = require('imagemin-webpack');
-const path = require('path');
-const HTMLWebpackPlugin = require('html-webpack-plugin');
-const HtmlWebpackInjector = require('html-webpack-injector');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const CopyPlugin = require('copy-webpack-plugin');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const OptimizeCssAssetsWebpackPlugin = require('optimize-css-assets-webpack-plugin');
-const TerserWebpacakPlugin = require('terser-webpack-plugin');
-const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const path = require("path");
+const zlib = require("zlib");
+const ImageMinimizerPlugin = require("image-minimizer-webpack-plugin");
+const HTMLWebpackPlugin = require("html-webpack-plugin");
+const HtmlWebpackInjector = require("html-webpack-injector");
+const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const CopyPlugin = require("copy-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const OptimizeCssAssetsWebpackPlugin = require("optimize-css-assets-webpack-plugin");
+const TerserWebpacakPlugin = require("terser-webpack-plugin");
+const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
+const CompressionPlugin = require("compression-webpack-plugin");
 
-const isProd = process.env.NODE_ENV === 'production'; // Если режим запуска вебпак стоит production = true
+const isProd = process.env.NODE_ENV === "production"; // Если режим запуска вебпак стоит production = true
 const isDev = !isProd;
+
+const PATHS = {
+  src: path.join(__dirname, "./src/"),
+  public: path.join(__dirname, "./public/"),
+  dist: path.join(__dirname, "./dist/"),
+  assets: "assets/",
+};
 
 const optimization = () => {
   const config = {
     splitChunks: {
-      chunks: 'all',
+      chunks: "all",
     },
   };
 
   if (isProd) {
-    config.minimizer = [new OptimizeCssAssetsWebpackPlugin(), new TerserWebpacakPlugin()];
+    config.minimizer = [
+      new OptimizeCssAssetsWebpackPlugin(),
+      new TerserWebpacakPlugin(),
+      new ImageMinimizerPlugin({
+        // Only apply this one to files equal to or over 8192 bytes
+        filter: (source) => {
+          if (source.byteLength >= 8192) {
+            return true;
+          }
+
+          return false;
+        },
+        minimizerOptions: {
+          plugins: [["jpegtran", { progressive: true }]],
+        },
+      }),
+      new ImageMinimizerPlugin({
+        // Only apply this one to files under 8192
+        filter: (source) => {
+          if (source.byteLength < 8192) {
+            return true;
+          }
+
+          return false;
+        },
+        minimizerOptions: {
+          plugins: [["jpegtran", { progressive: false }]],
+        },
+      }),
+    ];
   }
 
   return config;
 };
 
-const filename = (ext) => (isDev ? `[name].${ext}` : `[name].[contenthash].${ext}`);
+const filename = (ext, forled) =>
+  isDev
+    ? `${PATHS.assets}${forled}/[name].${ext}`
+    : `${PATHS.assets}${forled}/[name].[contenthash].${ext}`;
+
+const filenameJs = (ext, forled) =>
+  isDev ? `${forled}/[name].${ext}` : `${forled}/[name].[contenthash].${ext}`;
 
 const babelOptions = (preset) => {
   const opts = {
-    presets: ['@babel/preset-env'],
+    presets: ["@babel/preset-env"],
     plugins: [],
   };
 
@@ -44,13 +88,13 @@ const babelOptions = (preset) => {
 const jsLoaders = () => {
   const loaders = [
     {
-      loader: 'babel-loader',
+      loader: "babel-loader",
       options: babelOptions(),
     },
   ];
 
   if (isDev) {
-    loaders.push('eslint-loader');
+    loaders.push("eslint-loader");
   }
 
   return loaders;
@@ -59,7 +103,8 @@ const jsLoaders = () => {
 const plugins = () => {
   const base = [
     new HTMLWebpackPlugin({
-      template: '../public/index.html',
+      template: `${PATHS.public}index.html`,
+      filename: `${PATHS.dist}public/index.html`,
       minify: {
         collapseWhitespace: isProd,
       },
@@ -69,29 +114,28 @@ const plugins = () => {
     new CopyPlugin({
       patterns: [
         {
-          from: path.resolve(__dirname, './public/favicon.ico'),
-          to: path.resolve(__dirname, 'dist'),
+          from: path.resolve(__dirname, `${PATHS.public}/favicon`),
+          to: path.resolve(__dirname, `${PATHS.dist}public/favicon`),
         },
       ],
     }),
     new MiniCssExtractPlugin({
-      filename: filename('.css'),
+      filename: filename("css", "styles"),
     }),
   ];
 
   if (isProd) {
     base.push(
       new BundleAnalyzerPlugin(),
-      new ImageminPlugin({
-        bail: false, // Ignore errors on corrupted images
-        cache: true,
-        imageminOptions: {
+      new ImageMinimizerPlugin({
+        filename: `${PATHS.assets}/images/[name][ext]`,
+        minimizerOptions: {
           plugins: [
-            ['gifsicle', { interlaced: true }],
-            ['jpegtran', { progressinve: true }],
-            ['optipng', { optimizationLevel: 5 }],
+            ["gifsicle", { interlaced: true }],
+            ["jpegtran", { progressive: true }],
+            ["optipng", { optimizationLevel: 5 }],
             [
-              'svgo',
+              "svgo",
               {
                 plugins: [
                   {
@@ -103,6 +147,26 @@ const plugins = () => {
           ],
         },
       }),
+      new CompressionPlugin({
+        filename: "[path][base].gz",
+        algorithm: "gzip",
+        test: /\.js$|\.css$|\.html$/,
+        threshold: 10240,
+        minRatio: 0.8,
+      }),
+      new CompressionPlugin({
+        filename: "[path][base].br",
+        algorithm: "brotliCompress",
+        test: /\.(js|css|html|svg)$/,
+        compressionOptions: {
+          params: {
+            [zlib.constants.BROTLI_PARAM_QUALITY]: 11,
+          },
+        },
+        threshold: 10240,
+        minRatio: 0.8,
+        deleteOriginalAssets: false,
+      })
     );
   }
 
@@ -110,20 +174,20 @@ const plugins = () => {
 };
 
 module.exports = {
-  context: path.resolve(__dirname, 'src'),
-  mode: 'development',
+  context: path.resolve(__dirname, "src"),
+  mode: "development",
   entry: {
-    main: ['@babel/polyfill', './js/index.js'],
+    main: ["@babel/polyfill", "./js/index.js"],
   },
   output: {
-    filename: filename('js'),
-    path: path.resolve(__dirname, 'dist'),
-    publicPath: '',
+    filename: filenameJs("js", "js"),
+    path: path.resolve(__dirname, "dist"),
+    publicPath: "",
   },
   resolve: {
-    extensions: ['.js', '.json', '.jsx'],
+    extensions: [".js", ".json", ".jsx"],
     alias: {
-      '@': path.resolve(__dirname, 'src'),
+      "@": path.resolve(__dirname, "src"),
     },
   },
   optimization: optimization(),
@@ -133,7 +197,7 @@ module.exports = {
     compress: true,
     hot: isDev,
   },
-  devtool: isDev ? 'source-map' : false,
+  devtool: isDev ? "source-map" : false,
   plugins: plugins(),
   module: {
     rules: [
@@ -144,14 +208,14 @@ module.exports = {
             loader: MiniCssExtractPlugin.loader,
           },
           {
-            loader: 'css-loader',
+            loader: "css-loader",
             options: { sourceMap: true },
           },
           {
-            loader: 'postcss-loader',
+            loader: "postcss-loader",
             options: {
               postcssOptions: {
-                config: path.resolve(__dirname, 'src/js/config/postcss.config.js'),
+                config: path.resolve(__dirname, "config/postcss.config.js"),
               },
               sourceMap: true,
             },
@@ -169,50 +233,55 @@ module.exports = {
             },
           },
           {
-            loader: 'css-loader',
+            loader: "css-loader",
             options: { sourceMap: true },
           },
           {
-            loader: 'postcss-loader',
+            loader: "postcss-loader",
             options: {
               postcssOptions: {
-                config: path.resolve(__dirname, 'src/js/config/postcss.config.js'),
+                config: path.resolve(__dirname, "config/postcss.config.js"),
               },
               sourceMap: true,
             },
           },
           {
-            loader: 'sass-loader',
+            loader: "sass-loader",
             options: { sourceMap: true },
           },
         ],
       },
       {
-        test: /\.(png|jpeg|svg|gif|avif|webp)$/,
+        test: /\.(jpe?g|png|gif|svg|avif|webp)$/i,
         use: [
           {
-            loader: 'file-loader', // Or `url-loader` or your other loader
+            loader: "file-loader",
+            options: {
+              name: `${PATHS.assets}images/[name].[ext]`,
+            },
           },
           {
-            loader: ImageminPlugin.loader,
+            loader: ImageMinimizerPlugin.loader,
             options: {
-              bail: false, // Ignore errors on corrupted images
-              cache: true,
-              imageminOptions: {
-                plugins: ['gifsicle'],
+              severityError: "warning",
+              minimizerOptions: {
+                plugins: ["gifsicle"],
               },
             },
           },
         ],
       },
       {
-        test: /\.(ttf|woff|woff2|eot)$/,
-        use: ['file-loader'],
+        test: /\.(woff(2)?|ttf|eot)(\?v=\d+\.\d+\.\d+)?$/,
+        loader: "file-loader",
+        options: {
+          name: `${PATHS.assets}fonts/[name]/[name].[contenthash].[ext]`,
+        },
       },
       {
         test: /\.js$/, //  Когда приложение загружается, это вызывает ошибку ERR_UNKNOWN_URL_SCHEME в консоли инструментов Chrome Dev. npm start,
-        enforce: 'pre',
-        use: ['source-map-loader'],
+        enforce: "pre",
+        use: ["source-map-loader"],
       },
       {
         test: /\.js$/,
@@ -222,14 +291,14 @@ module.exports = {
       {
         test: /\.ts$/,
         exclude: /node_modules/,
-        loader: 'babel-loader',
-        options: babelOptions('@babel/preset-typescript'),
+        loader: "babel-loader",
+        options: babelOptions("@babel/preset-typescript"),
       },
       {
         test: /\.jsx$/,
         exclude: /node_modules/,
-        loader: 'babel-loader',
-        options: babelOptions('@babel/preset-react'),
+        loader: "babel-loader",
+        options: babelOptions("@babel/preset-react"),
       },
 
       // {

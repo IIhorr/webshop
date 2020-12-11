@@ -1,5 +1,5 @@
-@import '~normalize.css';
-@import url('https://fonts.googleapis.com/css?family=Lato:400,700');
+@import "~normalize.css";
+@import "utils/_fonts.css";
 
 :root {
   --primaryColor: #f09d51;
@@ -17,7 +17,7 @@
 body {
   color: var(--mainBlack);
   background: var(--mainWhite);
-  font-family: 'Lato', sans-serif;
+  font-family: "MontserratBold", sans-serif;
 }
 /* --------------- Navbar ---------------- */
 .navbar {
@@ -60,7 +60,7 @@ body {
 /* --------------- Hero ---------------- */
 .hero {
   min-height: calc(100vh - 60px);
-  background: url('../assets/images/hero-bcg.jpeg') center/cover no-repeat;
+  background: url("../../images/hero-bcg.jpeg") center/cover no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;
