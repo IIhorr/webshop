@@ -206,6 +206,9 @@ module.exports = {
         use: [
           {
             loader: MiniCssExtractPlugin.loader,
+            options: {
+              publicPath: "../../",
+            },
           },
           {
             loader: "css-loader",
@@ -257,7 +260,7 @@ module.exports = {
           {
             loader: "file-loader",
             options: {
-              name: `${PATHS.assets}images/[name].[ext]`,
+              name: "[path][name].[contenthash].[ext]",
             },
           },
           {
