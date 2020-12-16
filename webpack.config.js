@@ -2,7 +2,6 @@ const path = require("path");
 const zlib = require("zlib");
 const ImageMinimizerPlugin = require("image-minimizer-webpack-plugin");
 const HTMLWebpackPlugin = require("html-webpack-plugin");
-const HtmlWebpackInjector = require("html-webpack-injector");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
@@ -10,6 +9,7 @@ const OptimizeCssAssetsWebpackPlugin = require("optimize-css-assets-webpack-plug
 const TerserWebpacakPlugin = require("terser-webpack-plugin");
 const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
 const CompressionPlugin = require("compression-webpack-plugin");
+// const FaviconsWebpackPlugin = require("favicons-webpack-plugin");
 
 const isProd = process.env.NODE_ENV === "production"; // Если режим запуска вебпак стоит production = true
 const isDev = !isProd;
@@ -103,19 +103,18 @@ const jsLoaders = () => {
 const plugins = () => {
   const base = [
     new HTMLWebpackPlugin({
-      template: `${PATHS.public}index.html`,
+      template: "./public/index.html",
       filename: `${PATHS.dist}public/index.html`,
       minify: {
         collapseWhitespace: isProd,
       },
     }),
-    new HtmlWebpackInjector(),
     new CleanWebpackPlugin(),
     new CopyPlugin({
       patterns: [
         {
-          from: path.resolve(__dirname, `${PATHS.public}/favicon`),
-          to: path.resolve(__dirname, `${PATHS.dist}public/favicon`),
+          from: "assets/images/favicon",
+          to: "../dist/assets/images/favicon",
         },
       ],
     }),
@@ -127,8 +126,25 @@ const plugins = () => {
   if (isProd) {
     base.push(
       new BundleAnalyzerPlugin(),
+      // new FaviconsWebpackPlugin({
+      //   logo: "./assets/images/favicon/favicon.svg",
+      //   background: "#000",
+      //   theme_color: "#000",
+      //   display: "standalone",
+      //   icons: {
+      //     android: true,
+      //     appleIcon: true,
+      //     appleStartup: true,
+      //     favicons: true,
+      //     windows: true,
+
+      //     yandex: true,
+      //     firefox: true,
+      //     coast: true,
+      //   },
+      // }),
       new ImageMinimizerPlugin({
-        filename: `${PATHS.assets}/images/[name][ext]`,
+        // filename: `${PATHS.assets}/images/[name][ext]`,
         minimizerOptions: {
           plugins: [
             ["gifsicle", { interlaced: true }],
@@ -199,6 +215,9 @@ module.exports = {
   },
   devtool: isDev ? "source-map" : false,
   plugins: plugins(),
+  experiments: {
+    asset: true,
+  },
   module: {
     rules: [
       {
@@ -230,10 +249,7 @@ module.exports = {
         use: [
           {
             loader: MiniCssExtractPlugin.loader,
-            options: {
-              // hmr: isDev, // обновление страницы без перезагрузки
-              // reloadAll: true,
-            },
+            options: {},
           },
           {
             loader: "css-loader",
@@ -256,13 +272,11 @@ module.exports = {
       },
       {
         test: /\.(jpe?g|png|gif|svg|avif|webp)$/i,
+        type: "asset/resource",
+        generator: {
+          filename: "assets/images/[name][ext]",
+        },
         use: [
-          {
-            loader: "file-loader",
-            options: {
-              name: "[path][name].[contenthash].[ext]",
-            },
-          },
           {
             loader: ImageMinimizerPlugin.loader,
             options: {
@@ -276,9 +290,9 @@ module.exports = {
       },
       {
         test: /\.(woff(2)?|ttf|eot)(\?v=\d+\.\d+\.\d+)?$/,
-        loader: "file-loader",
-        options: {
-          name: `${PATHS.assets}fonts/[name]/[name].[contenthash].[ext]`,
+        type: "asset/resource",
+        generator: {
+          filename: "assets/fonts/[name]/[name].[contenthash].[ext]",
         },
       },
       {

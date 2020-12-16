@@ -1,3 +1,2 @@
-import '../assets/styles/css/main.css';
-
-// Cache-Control: max-age=31536000;
+import "../assets/styles/css/main.css";
+import "../assets/images/product-1.jpeg";
